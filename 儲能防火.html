@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>表後儲能消防安全導航站</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: "Microsoft JhengHei", sans-serif; background-color: #f3f4f6; }
+        [v-cloak] { display: none; }
+        .card { transition: all 0.3s ease; }
+        .fade-enter-active, .fade-leave-active { transition: opacity 0.5s ease; }
+        .fade-enter-from, .fade-leave-to { opacity: 0; }
+    </style>
+</head>
+<body>
+
+<div id="loading-error" style="display: none;" class="p-6 text-center text-red-600 font-bold">
+    ⚠️ 系統無法載入，請確認您的裝置已連上網際網路 (需要載入 Vue.js 與 Tailwind CSS)。
+</div>
+
+<div id="app" v-cloak class="min-h-screen flex flex-col">
+    <header class="bg-blue-900 text-white p-6 shadow-lg">
+        <div class="container mx-auto">
+            <h1 class="text-2xl md:text-3xl font-bold mb-2">🔋 表後儲能消防安全導航站</h1>
+            <p class="text-blue-200 text-sm md:text-base">依據《表後儲能應用與建築室內消防指引分析》第四章規劃</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-4 flex-grow">
+        
+        <div class="flex flex-col md:flex-row mb-6 border-b border-gray-300 bg-white md:bg-transparent rounded-lg md:rounded-none shadow md:shadow-none overflow-hidden">
+            <button @click="currentTab = 'wizard'" :class="['px-6 py-3 font-medium text-left md:text-center', currentTab === 'wizard' ? 'bg-blue-50 md:bg-transparent border-l-4 md:border-l-0 md:border-b-4 border-blue-600 text-blue-800' : 'text-gray-500 hover:text-blue-600']">
+                🔍 智慧合規快篩
+            </button>
+            <button @click="currentTab = 'exemptions'" :class="['px-6 py-3 font-medium text-left md:text-center', currentTab === 'exemptions' ? 'bg-blue-50 md:bg-transparent border-l-4 md:border-l-0 md:border-b-4 border-blue-600 text-blue-800' : 'text-gray-500 hover:text-blue-600']">
+                🔥 測試與豁免 (UL 9540A)
+            </button>
+            <button @click="currentTab = 'retrofit'" :class="['px-6 py-3 font-medium text-left md:text-center', currentTab === 'retrofit' ? 'bg-blue-50 md:bg-transparent border-l-4 md:border-l-0 md:border-b-4 border-blue-600 text-blue-800' : 'text-gray-500 hover:text-blue-600']">
+                🛠️ 既設案場改善
+            </button>
+        </div>
+
+        <div v-if="currentTab === 'wizard'" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <div class="lg:col-span-1 bg-white p-6 rounded-lg shadow-md h-fit">
+                <h2 class="text-xl font-bold mb-4 text-gray-800 border-l-4 border-blue-500 pl-3">步驟 1：選擇場域設定</h2>
+                
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">📍 您的場所類型？</label>
+                    <select v-model="form.locationType" class="w-full p-3 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="factory">工廠 / 工業區</option>
+                        <option value="commercial">商場 / 醫院 / 學校 / 集合住宅</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">🏗️ 預計安裝位置？</label>
+                    <select v-model="form.installSite" class="w-full p-3 border border-gray-300 rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="outdoor">戶外空地</option>
+                        <option value="indoor_dedicated">專用建築物 (僅供電氣設備)</option>
+                        <option value="indoor_part">建築物使用部分 (室內非專用)</option>
+                        <option value="rooftop">建築物頂層 (屋頂)</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-gray-700 font-bold mb-2">⚡ 電池技術種類？</label>
+                    <div class="flex flex-col gap-3">
+                        <label class="inline-flex items-center p-2 border rounded hover:bg-gray-50 cursor-pointer">
+                            <input type="radio" v-model="form.batteryType" value="general" class="form-radio text-blue-600 h-5 w-5">
+                            <span class="ml-2">一般電池 (鋰系/鉛酸/鎳系)</span>
+                        </label>
+                        <label class="inline-flex items-center p-2 border rounded hover:bg-gray-50 cursor-pointer">
+                            <input type="radio" v-model="form.batteryType" value="flow" class="form-radio text-blue-600 h-5 w-5">
+                            <span class="ml-2">液流電池 (Flow Battery)</span>
+                        </label>
+                        <label class="inline-flex items-center p-2 border rounded hover:bg-gray-50 cursor-pointer">
+                            <input type="radio" v-model="form.batteryType" value="fuelcell" class="form-radio text-blue-600 h-5 w-5">
+                            <span class="ml-2">燃料電池 (Fuel Cell)</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-4">
+                <transition name="fade" mode="out-in">
+                    <div :key="resultKey" class="bg-white p-6 rounded-lg shadow-md border-t-4 border-green-500">
+                        <h2 class="text-2xl font-bold mb-4 text-gray-800 flex flex-wrap items-center gap-2">
+                            📋 合規檢核清單
+                            <span class="text-sm font-normal text-white bg-green-600 px-3 py-1 rounded-full">
+                                {{ locationLabel }} - {{ siteLabel }}
+                            </span>
+                        </h2>
+
+                        <div v-if="form.batteryType === 'fuelcell'" class="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-4">
+                            <p class="font-bold text-yellow-700">⚠️ 燃料電池特別規範</p>
+                            <p class="text-sm text-yellow-800 mt-1">
+                                需設置氫氣偵測器，並標示「警告-氫氣-嚴禁煙火」。戶外設置需距離可燃物 1.5 公尺以上，且不得設於通道或防火間隔。
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            
+                            <div class="card bg-gray-50 p-4 rounded border border-gray-200">
+                                <h3 class="font-bold text-blue-800 mb-2 border-b border-gray-300 pb-1">📏 安全距離要求</h3>
+                                <ul class="list-disc list-inside text-sm space-y-2 text-gray-700">
+                                    <li v-if="rules.riskyDistance">
+                                        距危險場所(醫療/住宅/公危)：<span class="font-bold text-red-600">30公尺以上</span>
+                                    </li>
+                                    <li v-if="rules.buildingDistance">
+                                        距自身建物開口：<span class="font-bold text-red-600">{{ rules.buildingDistance }}</span>
+                                    </li>
+                                    <li v-if="rules.hospitalDistance">
+                                        距醫院/學校建築(針對商場類)：<span class="font-bold text-red-600">10公尺以上</span>
+                                    </li>
+                                    <li v-if="rules.rooftopCombustible">
+                                        距可燃物(屋頂)：<span class="font-bold text-red-600">1公尺以上</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="card bg-gray-50 p-4 rounded border border-gray-200">
+                                <h3 class="font-bold text-blue-800 mb-2 border-b border-gray-300 pb-1">🏗️ 構造與高度限制</h3>
+                                <ul class="list-disc list-inside text-sm space-y-2 text-gray-700">
+                                    <li v-if="rules.heightLimit">
+                                        儲能櫃高度：<span class="font-bold">{{ rules.heightLimit }}</span>
+                                    </li>
+                                    <li v-if="rules.firewall">
+                                        防火區劃：需具 <span class="font-bold">2小時防火時效</span> 牆壁/樓板
+                                    </li>
+                                    <li v-if="rules.ceiling">
+                                        天花板限制：<span class="font-bold text-red-600">不得設置天花板</span>
+                                    </li>
+                                    <li v-if="rules.rooftopBuilding">
+                                        建築限制：樓層需 <span class="font-bold">10層以下</span> 且高度 <span class="font-bold">30公尺以下</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="card bg-gray-50 p-4 rounded border border-gray-200">
+                                <h3 class="font-bold text-blue-800 mb-2 border-b border-gray-300 pb-1">🧯 消防設備</h3>
+                                <ul class="list-disc list-inside text-sm space-y-2 text-gray-700">
+                                    <li>必須設置 <span class="font-bold">自動滅火設備</span></li>
+                                    <li>必須設置 <span class="font-bold">火警自動警報設備</span></li>
+                                    <li>需辦理消防安全設備檢修申報</li>
+                                    <li>設置火災緊急應變安全防護設施</li>
+                                </ul>
+                            </div>
+
+                            <div class="card bg-gray-50 p-4 rounded border border-gray-200">
+                                <h3 class="font-bold text-blue-800 mb-2 border-b border-gray-300 pb-1">🔋 容量與尺寸</h3>
+                                <ul class="list-disc list-inside text-sm space-y-2 text-gray-700">
+                                    <li v-if="rules.containerSize">
+                                        尺寸上限：長16.2m、寬2.6m、高3.2m
+                                    </li>
+                                    <li>電池群組容量：不得超過 <span class="font-bold">50 kWh</span></li>
+                                    <li>電池群組間距：<span class="font-bold">1公尺以上</span></li>
+                                </ul>
+                            </div>
+
+                        </div>
+                        
+                        <div class="mt-4 p-3 bg-blue-50 text-blue-800 text-sm rounded border border-blue-200">
+                            <strong>💡 專家提示：</strong> 
+                            若無法滿足上述距離或設備要求，可參考「測試與豁免」頁籤，透過 CNS 62933-5-2 或 UL 9540A 測試來爭取排除規定。
+                        </div>
+                    </div>
+                </transition>
+            </div>
+        </div>
+
+        <div v-if="currentTab === 'exemptions'" class="bg-white p-6 md:p-8 rounded-lg shadow-md">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">🔥 大型燃燒測試與排除規定 (UL 9540A)</h2>
+            <p class="mb-4 text-gray-600">
+                依據指引第九點，若儲能系統通過 <strong>CNS 62933-5-2 附錄 C</strong> 或 <strong>UL 9540A</strong> 之大型燃燒測試，並經消防設備設計人員評估後，可不受部分限制。
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <h3 class="text-lg font-bold text-blue-700 mb-3">✅ 可豁免之限制項目</h3>
+                    <ul class="list-disc list-inside space-y-2 text-gray-700 bg-green-50 p-4 rounded border border-green-200">
+                        <li><strong>自動滅火設備</strong> 之強制設置規定</li>
+                        <li><strong>火警自動警報設備</strong> 之強制設置規定</li>
+                        <li><strong>安全距離</strong> 限制</li>
+                        <li><strong>尺寸限制</strong> (長寬高)</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-bold text-purple-700 mb-3">🧪 測試層級 (UL 9540A)</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center p-3 bg-gray-100 rounded">
+                            <span class="bg-purple-600 text-white rounded-full w-8 h-8 flex-shrink-0 flex items-center justify-center font-bold mr-3">1</span>
+                            <div>
+                                <strong class="block">電芯 (Cell)</strong>
+                                <span class="text-xs text-gray-500">測試是否引發熱失控及廢氣組成</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center p-3 bg-gray-100 rounded">
+                            <span class="bg-purple-600 text-white rounded-full w-8 h-8 flex-shrink-0 flex items-center justify-center font-bold mr-3">2</span>
+                            <div>
+                                <strong class="block">模組 (Module)</strong>
+                                <span class="text-xs text-gray-500">測試延燒趨勢與熱釋率</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center p-3 bg-gray-100 rounded">
+                            <span class="bg-purple-600 text-white rounded-full w-8 h-8 flex-shrink-0 flex items-center justify-center font-bold mr-3">3</span>
+                            <div>
+                                <strong class="block">機櫃 (Unit)</strong>
+                                <span class="text-xs text-gray-500">評估火勢分布與緩燃風險</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center p-3 bg-gray-100 rounded">
+                            <span class="bg-purple-600 text-white rounded-full w-8 h-8 flex-shrink-0 flex items-center justify-center font-bold mr-3">4</span>
+                            <div>
+                                <strong class="block">安裝 (Install)</strong>
+                                <span class="text-xs text-gray-500">驗證消防系統有效性 (不適用家用)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div v-if="currentTab === 'retrofit'" class="bg-white p-6 md:p-8 rounded-lg shadow-md">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">🛠️ 既設案場改善專區</h2>
+            
+            <div class="relative border-l-4 border-gray-300 ml-4 space-y-8">
+                <div class="relative pl-8">
+                    <div class="absolute -left-3 top-0 bg-blue-500 rounded-full w-6 h-6 border-4 border-white"></div>
+                    <h3 class="text-lg font-bold text-gray-800">表前儲能系統 (111.11.14 前設置)</h3>
+                    <div class="mt-2 p-4 bg-gray-50 rounded border border-gray-200">
+                        <ul class="list-disc list-inside text-sm space-y-1 text-gray-700">
+                            <li>管理權人應提具改善計畫書交予台電。</li>
+                            <li>需於定期試驗前完成改善。</li>
+                            <li>需增設溫度偵知裝置或同等性能之火警探測。</li>
+                            <li>需設置自動撒水設備。</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="relative pl-8">
+                    <div class="absolute -left-3 top-0 bg-green-500 rounded-full w-6 h-6 border-4 border-white"></div>
+                    <h3 class="text-lg font-bold text-gray-800">表後儲能系統 (114.11.3 前設置)</h3>
+                    <div class="mt-2 p-4 bg-gray-50 rounded border border-gray-200">
+                        <ul class="list-disc list-inside text-sm space-y-1 text-gray-700">
+                            <li>優先改善事項：設置標誌設施。</li>
+                            <li>制定及執行緊急應變計畫。</li>
+                            <li><strong>人員管制：</strong>設置空間平時應上鎖，不得有人員居住或常時進駐。</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="bg-gray-800 text-gray-400 p-6 text-center text-sm">
+        <p>© 2025 工業技術研究院資料視覺化示範 | 資料來源：114年度建築儲能科技應用與防火安全研討會簡報</p>
+    </footer>
+</div>
+
+<script>
+    setTimeout(function() {
+        if (!window.Vue) {
+            document.getElementById('loading-error').style.display = 'block';
+        }
+    }, 3000);
+
+    const { createApp, reactive, computed, ref } = Vue;
+
+    createApp({
+        setup() {
+            const currentTab = ref('wizard');
+            
+            const form = reactive({
+                locationType: 'factory', // factory | commercial
+                installSite: 'outdoor', // outdoor | indoor_dedicated | indoor_part | rooftop
+                batteryType: 'general' // general | flow | fuelcell
+            });
+
+            // Logic Core based on PDF Matrix
+            const rules = computed(() => {
+                const r = {
+                    riskyDistance: true, // 30m rule
+                    buildingDistance: null,
+                    hospitalDistance: false, // 10m rule for commercial
+                    heightLimit: '4.5公尺以下',
+                    containerSize: false,
+                    firewall: false,
+                    ceiling: false,
+                    rooftopBuilding: false,
+                    rooftopCombustible: false
+                };
+
+                // Height Adjustment for Flow Battery
+                if (form.batteryType === 'flow' && form.installSite === 'outdoor') {
+                    r.heightLimit = '7公尺以下 (堆疊兩層)';
+                }
+
+                // Commercial Specifics
+                if (form.locationType === 'commercial') {
+                    if (form.installSite === 'outdoor') {
+                        r.hospitalDistance = true;
+                    }
+                }
+
+                // Site Specific Logic
+                if (form.installSite === 'outdoor') {
+                    r.buildingDistance = "3公尺以上 (設防火牆可縮至1公尺)";
+                    r.containerSize = true;
+                } else if (form.installSite === 'indoor_dedicated' || form.installSite === 'indoor_part') {
+                    r.firewall = true;
+                    r.ceiling = true;
+                    r.riskyDistance = false;
+                    r.heightLimit = null; 
+                    if(form.installSite === 'indoor_dedicated') {
+                         r.buildingDistance = null;
+                    }
+                } else if (form.installSite === 'rooftop') {
+                    r.rooftopBuilding = true;
+                    r.rooftopCombustible = true;
+                    r.buildingDistance = null;
+                    r.riskyDistance = false;
+                    r.heightLimit = null;
+                }
+
+                return r;
+            });
+
+            const locationLabel = computed(() => {
+                return form.locationType === 'factory' ? '🏭 工廠/工業區' : '🏥 商場/醫院/社區';
+            });
+
+            const siteLabel = computed(() => {
+                const map = {
+                    'outdoor': '戶外空地',
+                    'indoor_dedicated': '專用建築物',
+                    'indoor_part': '室內使用部分',
+                    'rooftop': '建築物頂層'
+                };
+                return map[form.installSite];
+            });
+
+            return {
+                currentTab,
+                form,
+                rules,
+                locationLabel,
+                siteLabel,
+                resultKey: computed(() => `${form.locationType}-${form.installSite}-${form.batteryType}`)
+            };
+        }
+    }).mount('#app');
+</script>
+
+</body>
+</html>
